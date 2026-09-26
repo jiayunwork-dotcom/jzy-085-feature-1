@@ -61,6 +61,48 @@ def make_beam(q_down: float = 3.0, l: float = 4.0, fixed: bool = True):
     ), dict(e=e, a=a, i=i_, l=l, q=q_down)
 
 
+def make_euler_column(n: int = 8, l: float = 4.0, p: float = 100.0,
+                      bc: str = "pinned", tension: bool = False):
+    """等截面直柱（水平放置，x ∈ [0, L]），离散为 n 个单元，右端节点受轴向力。
+
+    bc 决定两端约束方式（即欧拉公式中的计算长度）：
+    - "pinned"     两端铰支：P_cr = π²EI/L²
+    - "cantilever" 左端固定、右端自由：P_cr = π²EI/(2L)²
+    - "propped"    左端固定、右端铰支：P_cr = μ²EI/L²，μ = 4.49340945790906
+                   （tan μ = μ 的最小正根）
+
+    tension = True 时轴向力改为受拉（用于「无正临界因子」测试）。
+    """
+    e, a, i_ = 2.1e8, 2.0e-2, 8.0e-5  # kN, m 单位制
+    right_restraints = {
+        "pinned": [False, True, False],      # 铰支：轴向自由、横向锁死、转角放开
+        "cantilever": [False, False, False],  # 自由端
+        "propped": [False, True, False],
+    }
+    nodes = []
+    for k in range(n + 1):
+        x = l * k / n
+        if k == 0:
+            restraints = [True, True, bc != "pinned"]  # 铰支放开转角；固定端锁死
+        elif k == n:
+            restraints = right_restraints[bc]
+        else:
+            restraints = [False, False, False]
+        nodes.append(Node(id=str(k + 1), x=x, y=0.0, restraints=restraints))
+    members = [
+        Member(id=f"m{k + 1}", node_i=str(k + 1), node_j=str(k + 2),
+               elastic_modulus=e, area=a, inertia=i_)
+        for k in range(n)
+    ]
+    direction = 1.0 if tension else -1.0  # 压力把右端推向左端支座（-x）
+    frame = FrameInput(
+        nodes=nodes,
+        members=members,
+        nodal_loads=[NodalLoad(node_id=str(n + 1), fx=direction * p)],
+    )
+    return frame, dict(e=e, a=a, i=i_, l=l, p=p, n=n)
+
+
 def make_mixed_frame():
     """带斜杆、铰支 / 固定混合支承、节点荷载 + 分布荷载的刚架（供平衡恒等式测试）。"""
     e, a, i_ = 3.0e7, 5.0e-2, 2.0e-4

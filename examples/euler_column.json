@@ -1,0 +1,27 @@
+{
+  "nodes": [
+    {"id": "1", "x": 0.0, "y": 0.0, "restraints": [true, true, false]},
+    {"id": "2", "x": 0.5, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "3", "x": 1.0, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "4", "x": 1.5, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "5", "x": 2.0, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "6", "x": 2.5, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "7", "x": 3.0, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "8", "x": 3.5, "y": 0.0, "restraints": [false, false, false]},
+    {"id": "9", "x": 4.0, "y": 0.0, "restraints": [false, true, false]}
+  ],
+  "members": [
+    {"id": "m1", "node_i": "1", "node_j": "2", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m2", "node_i": "2", "node_j": "3", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m3", "node_i": "3", "node_j": "4", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m4", "node_i": "4", "node_j": "5", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m5", "node_i": "5", "node_j": "6", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m6", "node_i": "6", "node_j": "7", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m7", "node_i": "7", "node_j": "8", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "m8", "node_i": "8", "node_j": "9", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5}
+  ],
+  "nodal_loads": [
+    {"node_id": "9", "fx": -100.0, "fy": 0.0, "moment": 0.0}
+  ],
+  "distributed_loads": []
+}

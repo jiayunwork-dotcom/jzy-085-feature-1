@@ -16,7 +16,7 @@ import math
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import make_mixed_frame, make_portal_frame
+from conftest import make_euler_column, make_mixed_frame, make_portal_frame
 from framesolver.main import app
 
 client = TestClient(app)
@@ -148,8 +148,85 @@ def test_missing_required_field_returns_structured_error():
     assert "message" in body["error"] and body["error"]["message"]
 
 
-def test_openapi_documents_single_entrypoint():
-    """对外只暴露一个求解入口；OpenAPI 中应能看到 /solve。"""
+def test_openapi_documents_both_entrypoints():
+    """对外暴露两个并列入口：/solve（静力）与 /stability（稳定）。"""
     spec = client.get("/openapi.json").json()
-    assert "/solve" in spec["paths"]
     assert "post" in spec["paths"]["/solve"]
+    assert "post" in spec["paths"]["/stability"]
+
+
+def test_solve_response_contract_unchanged():
+    """静力入口的响应结构必须保持原样（本次升级不得改变 /solve 的输出）。"""
+    frame, _ = make_portal_frame()
+    resp = client.post("/solve", json=_dump(frame))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {"success", "displacements", "member_forces", "reactions"}
+    assert body["success"] is True
+    for d in body["displacements"]:
+        assert set(d) == {"node_id", "ux", "uy", "theta"}
+    for m in body["member_forces"]:
+        assert set(m) == {"member_id", "node_i", "node_j", "end_i", "end_j", "axial_force"}
+        for end in ("end_i", "end_j"):
+            assert set(m[end]) == {"axial", "shear", "moment"}
+    for r in body["reactions"]:
+        assert set(r) == {"node_id", "fx", "fy", "moment", "restrained"}
+
+
+# ---------------------------------------------------------------------------
+# 稳定分析入口 /stability
+# ---------------------------------------------------------------------------
+
+
+def test_stability_success_shape():
+    """欧拉柱（两端铰支，n=4）：响应结构 + 临界因子命中 π²EI/L²。"""
+    frame, p = make_euler_column(n=4, bc="pinned")
+    resp = client.post("/stability", json=_dump(frame))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {"success", "has_buckling_mode",
+                         "critical_load_factor", "mode_shape"}
+    assert body["success"] is True and body["has_buckling_mode"] is True
+    euler = math.pi**2 * p["e"] * p["i"] / p["l"] ** 2
+    assert body["critical_load_factor"] * p["p"] == pytest.approx(euler, rel=5e-3)
+    assert len(body["mode_shape"]) == p["n"] + 1
+    for m in body["mode_shape"]:
+        assert set(m) == {"node_id", "ux", "uy", "theta"}
+        assert all(math.isfinite(v) for k, v in m.items() if k != "node_id")
+    # 归一化约定：绝对值最大的分量为 +1
+    assert max(abs(m["ux"]) + abs(m["uy"]) + abs(m["theta"])
+               for m in body["mode_shape"]) >= 1.0
+
+
+def test_stability_tension_returns_no_buckling_mode_error():
+    """受拉柱：422 + NO_BUCKLING_MODE，绝不硬凑一个数。"""
+    frame, _ = make_euler_column(n=4, bc="pinned", tension=True)
+    resp = client.post("/stability", json=_dump(frame))
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "NO_BUCKLING_MODE"
+    assert body["error"]["message"]
+
+
+def test_stability_invalid_model_reuses_static_error_codes():
+    """稳定入口与静力入口共用同一套校验：非法模型返回同样的错误代码。"""
+    frame, _ = make_euler_column(n=4)
+    payload = _dump(frame)
+    payload["members"] = payload["members"][:2]  # 删掉尾部杆件，结构断开
+    resp = client.post("/stability", json=payload)
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "DISCONNECTED_STRUCTURE"
+
+    payload = _dump(frame)
+    payload["nodes"][0]["restraints"] = [False, False, False]  # 松开左端支座
+    resp = client.post("/stability", json=payload)
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_SUPPORT"
+
+
+def test_stability_malformed_json_returns_structured_error():
+    resp = client.post("/stability", content="{not valid json",
+                       headers={"content-type": "application/json"})
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "INVALID_REQUEST"

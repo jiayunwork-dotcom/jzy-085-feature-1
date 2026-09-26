@@ -112,6 +112,27 @@ class SolveResponse(BaseModel):
     reactions: list[Reaction]
 
 
+class StabilityResponse(BaseModel):
+    """弹性稳定分析的成功响应（找到有效屈曲模态时）。
+
+    不存在正临界因子时本接口不以成功响应返回，
+    而是返回 code = NO_BUCKLING_MODE 的结构化错误（见 ErrorResponse）。
+    """
+
+    success: Literal[True] = True
+    has_buckling_mode: Literal[True] = Field(
+        True, description="是否存在有效的弹性屈曲模态（成功响应中恒为 true）"
+    )
+    critical_load_factor: float = Field(
+        ..., description="弹性临界荷载因子：当前荷载整体放大该倍数时发生分岔失稳"
+    )
+    mode_shape: list[NodeDisplacement] = Field(
+        ...,
+        description="屈曲模态的节点位移形状（归一化：绝对值最大的分量为 +1；"
+        "位移与转角量纲不同，仅形状有意义）",
+    )
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

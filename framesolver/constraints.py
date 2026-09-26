@@ -28,6 +28,15 @@ def classify_dofs(restraints: list[list[bool]]) -> tuple[np.ndarray, np.ndarray]
     return free, restrained
 
 
+def condense_matrix(stiffness: np.ndarray, free: np.ndarray) -> np.ndarray:
+    """取出缩聚矩阵 K_ff（删去被约束自由度的行和列）。
+
+    弹性总刚与几何总刚必须用同一组 free 索引调用本函数缩聚，
+    保证两种刚度在同一组自由度、同一种约束消除方式下进入求解。
+    """
+    return stiffness[np.ix_(free, free)]
+
+
 def condense(stiffness: np.ndarray, load: np.ndarray, free: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """取出缩聚矩阵 K_ff 与右端项 P_f。"""
-    return stiffness[np.ix_(free, free)], load[free]
+    return condense_matrix(stiffness, free), load[free]

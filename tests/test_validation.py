@@ -14,11 +14,13 @@ from framesolver.analysis import analyze_frame
 from framesolver.errors import (
     DisconnectedStructureError,
     DuplicateNodeIdError,
+    EigenSolutionError,
     FrameError,
     InsufficientSupportError,
     InvalidLoadError,
     InvalidPropertyError,
     MemberNodeNotFoundError,
+    NoBucklingModeError,
     SingularMatrixError,
     ZeroLengthMemberError,
 )
@@ -228,6 +230,8 @@ def test_all_frame_errors_carry_code_and_message():
         DisconnectedStructureError,
         InsufficientSupportError,
         SingularMatrixError,
+        NoBucklingModeError,
+        EigenSolutionError,
     ]:
         err = err_cls("说明文本")
         assert isinstance(err, FrameError)

@@ -21,6 +21,29 @@ def element_dof_map(index_i: int, index_j: int) -> np.ndarray:
     return np.array([*dof_indices(index_i), *dof_indices(index_j)], dtype=int)
 
 
+def assemble_matrix(
+    ndof: int,
+    members: list,
+    node_index: dict[str, int],
+    k_global_by_member: list[np.ndarray],
+) -> np.ndarray:
+    """只组装总体矩阵（弹性总刚、几何总刚共用同一 scatter-add 路径）。
+
+    参数
+    ----
+    ndof: 总自由度数（= 3 × 节点数）
+    members: 校验后的杆件模型列表
+    node_index: 节点编号 -> 紧凑索引
+    k_global_by_member: 与 members 等长、已转换到整体坐标的单元矩阵
+    """
+    matrix = np.zeros((ndof, ndof), dtype=float)
+    for member, k_g in zip(members, k_global_by_member, strict=True):
+        dofs = element_dof_map(node_index[member.node_i], node_index[member.node_j])
+        # np.ix_ 做 6×6 分块 scatter-add
+        matrix[np.ix_(dofs, dofs)] += k_g
+    return matrix
+
+
 def assemble(
     ndof: int,
     members: list,
@@ -40,15 +63,11 @@ def assemble(
         与 members 等长、且已转换到整体坐标的单元刚度 / 等效节点力
     nodal_loads: 校验后的节点荷载模型列表
     """
-    stiffness = np.zeros((ndof, ndof), dtype=float)
+    stiffness = assemble_matrix(ndof, members, node_index, k_global_by_member)
     load = np.zeros(ndof, dtype=float)
 
-    for member, k_g, eq_g in zip(
-        members, k_global_by_member, eq_load_global_by_member, strict=True
-    ):
+    for member, eq_g in zip(members, eq_load_global_by_member, strict=True):
         dofs = element_dof_map(node_index[member.node_i], node_index[member.node_j])
-        # np.ix_ 做 6×6 分块 scatter-add
-        stiffness[np.ix_(dofs, dofs)] += k_g
         load[dofs] += eq_g
 
     for nodal in nodal_loads:

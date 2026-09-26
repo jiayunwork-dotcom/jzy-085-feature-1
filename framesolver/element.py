@@ -12,6 +12,9 @@ K = [ 0   c   d   0  -c   e]
     [ 0  -b  -c   0   b  -c]
     [ 0   c   e   0  -c   d]
 
+另提供一致几何刚度矩阵（local_geometric_stiffness）：轴力引起的二阶刚度，
+供稳定分析（stability.py）使用，与弹性刚度共用同一套自由度顺序与坐标变换。
+
 满跨横向均布荷载 q（沿局部 +ȳ）的等效节点力由 Hermite 形函数积分得到，
 采用 v 沿 +ȳ、θ = dv/dx（逆时针为正）的梁约定：
 
@@ -59,6 +62,50 @@ def local_stiffness(length: float, e: float, a: float, inertia: float) -> np.nda
             [-ea_l, 0.0, 0.0, ea_l, 0.0, 0.0],
             [0.0, -b, -c, 0.0, b, -c],
             [0.0, c, g, 0.0, -c, d],
+        ],
+        dtype=float,
+    )
+
+
+def local_geometric_stiffness(length: float, axial_force: float) -> np.ndarray:
+    """形成 6×6 局部坐标系单元几何刚度矩阵（一致几何刚度）。
+
+    由横向 Hermite 形函数梯度的积分 N·∫(dv/dx)²dx 离散得到，自由度顺序、
+    局部坐标约定与 :func:`local_stiffness` 完全一致，坐标变换也共用同一套
+    （geometry.stiffness_to_global）。
+
+    轴力 N 以**受拉为正**（与 forces.py 输出的轴力约定一致）：
+
+    - 受拉（N > 0）：矩阵半正定，**加固**抗侧 / 抗弯刚度；
+    - 受压（N < 0）：矩阵半负定，**削弱**抗侧刚度——削弱到恰好吃穿
+      弹性刚度时即发生分岔失稳（见 stability.py）。
+
+    矩阵关于 N 线性；轴向两个自由度的行 / 列恒为零（二阶功只来自横向位移）。
+    记号 f = N / (30L)：
+
+        [ 0   0    0    0   0    0  ]
+        [ 0  36    3L   0  -36   3L ]
+        [ 0   3L   4L²  0  -3L  -L² ]
+    K = f [ 0   0    0    0   0    0  ]
+        [ 0  -36  -3L   0   36  -3L ]
+        [ 0   3L  -L²   0  -3L   4L²]
+
+    参数
+    ----
+    length:      杆长 L
+    axial_force: 轴力 N（受拉为正）
+    """
+    l = float(length)
+    f = float(axial_force) / (30.0 * l)
+    l2 = l * l
+    return f * np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 36.0, 3.0 * l, 0.0, -36.0, 3.0 * l],
+            [0.0, 3.0 * l, 4.0 * l2, 0.0, -3.0 * l, -l2],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, -36.0, -3.0 * l, 0.0, 36.0, -3.0 * l],
+            [0.0, 3.0 * l, -l2, 0.0, -3.0 * l, 4.0 * l2],
         ],
         dtype=float,
     )

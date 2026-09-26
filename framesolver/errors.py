@@ -82,3 +82,21 @@ class SingularMatrixError(FrameError):
 
     code = "SINGULAR_MATRIX"
     http_status = 422
+
+
+class NoBucklingModeError(FrameError):
+    """稳定分析中不存在正的弹性临界荷载因子。
+
+    结构在当前荷载方向下以受拉为主（或根本无轴向力），
+    弹性刚度 + 任意正倍数的几何刚度始终正定，不发生弹性屈曲。
+    """
+
+    code = "NO_BUCKLING_MODE"
+    http_status = 422
+
+
+class EigenSolutionError(FrameError):
+    """广义特征值问题求解失败或特征解残差不可信（数值层面的最后防线）。"""
+
+    code = "EIGEN_SOLUTION_FAILED"
+    http_status = 422

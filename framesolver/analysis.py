@@ -1,4 +1,10 @@
-"""把各功能段串成一次完整的直接刚度法核算。"""
+"""把各功能段串成一次完整的直接刚度法核算。
+
+run_linear_analysis 是第一阶段（一阶线性静力分析）的公共实现：
+静力核算（analyze_frame）据它格式化输出，
+稳定分析（stability.analyze_stability）据它取得每根杆的真实轴力，
+保证两个阶段共用同一份校验、组装、约束处理与位移解，数据严丝合缝。
+"""
 
 from __future__ import annotations
 
@@ -12,8 +18,18 @@ from .solver import solve_system
 from .validation import validate
 
 
-def analyze_frame(frame) -> dict:
-    """对一副刚架执行完整核算，返回可直接序列化为 SolveResponse 的字典。"""
+def run_linear_analysis(frame) -> dict:
+    """第一阶段：一阶线性静力分析（校验 → 组装 → 求解 → 内力回代）。
+
+    返回内部上下文字典，键包括：
+
+    - node_index / geometries / ndof：拓扑与几何信息（校验阶段产出）
+    - stiffness / load：整体弹性刚度矩阵与荷载向量（未缩聚）
+    - free_dofs / restrained_dofs：划行划列法的自由度分类
+    - displacement：完整节点位移向量（被约束自由度为零）
+    - member_forces：各杆杆端内力（与 SolveResponse 同构的字典列表）
+    - axial_forces：{杆件编号: 轴力}，拉力为正——稳定分析第二阶段的输入
+    """
     # 1) 校验（含连通性与整体刚体约束检查），顺便复用几何信息
     validation_info = validate(frame)
     geometries = validation_info["geometries"]
@@ -66,6 +82,7 @@ def analyze_frame(frame) -> dict:
 
     # 6) 各杆杆端内力（局部刚度 × 局部位移）
     member_forces_out: list[dict] = []
+    axial_forces: dict[str, float] = {}
     for member, geom, k_local, t, eq_local in local_data:
         ii = node_index[member.node_i]
         jj = node_index[member.node_j]
@@ -96,9 +113,32 @@ def analyze_frame(frame) -> dict:
                 "axial_force": axial,
             }
         )
+        axial_forces[member.id] = axial
 
-    # 7) 支座反力回代
-    reaction_vector = forces_mod.reactions(stiffness, displacement, load, restrained_dofs)
+    return {
+        "node_index": node_index,
+        "geometries": geometries,
+        "ndof": ndof,
+        "stiffness": stiffness,
+        "load": load,
+        "free_dofs": free_dofs,
+        "restrained_dofs": restrained_dofs,
+        "displacement": displacement,
+        "member_forces": member_forces_out,
+        "axial_forces": axial_forces,
+    }
+
+
+def analyze_frame(frame) -> dict:
+    """对一副刚架执行完整核算，返回可直接序列化为 SolveResponse 的字典。"""
+    ctx = run_linear_analysis(frame)
+    node_index = ctx["node_index"]
+    displacement = ctx["displacement"]
+
+    # 支座反力回代：取受约束行 R = (K d − P)_r
+    reaction_vector = forces_mod.reactions(
+        ctx["stiffness"], displacement, ctx["load"], ctx["restrained_dofs"]
+    )
     _guard_finite(reaction_vector, "支座反力")
 
     reactions_out: list[dict] = []
@@ -129,7 +169,7 @@ def analyze_frame(frame) -> dict:
     return {
         "success": True,
         "displacements": displacements_out,
-        "member_forces": member_forces_out,
+        "member_forces": ctx["member_forces"],
         "reactions": reactions_out,
     }
 
