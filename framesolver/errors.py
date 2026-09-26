@@ -82,3 +82,14 @@ class SingularMatrixError(FrameError):
 
     code = "SINGULAR_MATRIX"
     http_status = 422
+
+
+class NoBucklingModeError(FrameError):
+    """稳定分析中不存在正的临界荷载因子。
+
+    结构在当前荷载方向下以受拉为主（或荷载不产生有效轴压），
+    广义特征值问题没有正特征值，即该荷载方向下不发生弹性屈曲。
+    """
+
+    code = "NO_BUCKLING_MODE"
+    http_status = 422

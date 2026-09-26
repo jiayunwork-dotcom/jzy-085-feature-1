@@ -112,6 +112,24 @@ class SolveResponse(BaseModel):
     reactions: list[Reaction]
 
 
+class BucklingResponse(BaseModel):
+    """弹性稳定分析结果（输入与 /solve 同为 FrameInput）。"""
+
+    success: Literal[True] = True
+    critical_load_factor: float = Field(
+        ...,
+        description="临界荷载因子 λ_cr：当前荷载整体放大 λ_cr 倍时发生分岔失稳",
+    )
+    has_buckling_mode: bool = Field(
+        ...,
+        description="是否存在有效屈曲模态（受拉主导时分析以 NO_BUCKLING_MODE 报错，不会走到 false 的成功响应）",
+    )
+    buckling_mode: list[NodeDisplacement] = Field(
+        ...,
+        description="屈曲模态位移形状（归一化：最大绝对分量 = 1，只定义形状不定义幅值）",
+    )
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

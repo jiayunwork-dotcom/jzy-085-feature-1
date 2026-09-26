@@ -58,3 +58,21 @@ def assemble(
         load[base + 2] += nodal.moment
 
     return stiffness, load
+
+
+def assemble_matrix(
+    ndof: int,
+    members: list,
+    node_index: dict[str, int],
+    matrix_global_by_member: list[np.ndarray],
+) -> np.ndarray:
+    """只组装矩阵、不组装荷载向量（用于整体几何刚度等第二类矩阵）。
+
+    与 :func:`assemble` 使用完全相同的自由度编号与 scatter-add 规则，
+    保证多种整体矩阵在同一组自由度上对齐。
+    """
+    matrix = np.zeros((ndof, ndof), dtype=float)
+    for member, m_g in zip(members, matrix_global_by_member, strict=True):
+        dofs = element_dof_map(node_index[member.node_i], node_index[member.node_j])
+        matrix[np.ix_(dofs, dofs)] += m_g
+    return matrix
