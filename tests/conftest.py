@@ -61,6 +61,45 @@ def make_beam(q_down: float = 3.0, l: float = 4.0, fixed: bool = True):
     ), dict(e=e, a=a, i=i_, l=l, q=q_down)
 
 
+def make_axial_column(n_segments: int = 4, p: float = 10.0,
+                      boundary: str = "pinned-pinned",
+                      e: float = 2.1e8, a: float = 2.0e-2, i_: float = 8.0e-5,
+                      length: float = 4.0):
+    """竖直等截面轴心压柱，沿 +y 从底到顶，顶端 -y 向轴压 P，离散成 n 段。
+
+    boundary:
+    - "pinned-pinned"：底端铰支（ux=uy=0，可转），顶端仅水平约束（ux=0），
+      计算长度系数 1.0；
+    - "fixed-free"：底端固定，顶端自由（悬臂柱），计算长度系数 2.0。
+    """
+    nodes = []
+    for k in range(n_segments + 1):
+        y = length * k / n_segments
+        if k == 0:
+            restraints = [True, True, True] if boundary == "fixed-free" \
+                else [True, True, False]
+        elif k == n_segments and boundary == "pinned-pinned":
+            restraints = [True, False, False]
+        else:
+            restraints = [False, False, False]
+        nodes.append(Node(id=str(k), x=0.0, y=y, restraints=restraints))
+    members = [
+        Member(id=f"e{k}", node_i=str(k), node_j=str(k + 1),
+               elastic_modulus=e, area=a, inertia=i_)
+        for k in range(n_segments)
+    ]
+    frame = FrameInput(
+        nodes=nodes,
+        members=members,
+        nodal_loads=[NodalLoad(node_id=str(n_segments), fx=0.0, fy=-p, moment=0.0)],
+    )
+    effective_factor = 2.0 if boundary == "fixed-free" else 1.0
+    return frame, dict(e=e, a=a, i=i_, length=length, p=p,
+                       effective_factor=effective_factor,
+                       euler_load=np.pi ** 2 * e * i_
+                       / (effective_factor * length) ** 2)
+
+
 def make_mixed_frame():
     """带斜杆、铰支 / 固定混合支承、节点荷载 + 分布荷载的刚架（供平衡恒等式测试）。"""
     e, a, i_ = 3.0e7, 5.0e-2, 2.0e-4

@@ -82,3 +82,14 @@ class SingularMatrixError(FrameError):
 
     code = "SINGULAR_MATRIX"
     http_status = 422
+
+
+class NoBucklingError(FrameError):
+    """当前荷载方向下不存在有物理意义的正临界因子。
+
+    两种典型情形：荷载为零（几何刚度为零），或结构在当前荷载下以受拉为主，
+    弹性刚度在任何正向放大倍数下都不会被几何刚度吃穿。
+    """
+
+    code = "NO_POSITIVE_CRITICAL_FACTOR"
+    http_status = 422

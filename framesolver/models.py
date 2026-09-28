@@ -112,6 +112,31 @@ class SolveResponse(BaseModel):
     reactions: list[Reaction]
 
 
+class BucklingModeDisplacement(BaseModel):
+    """屈曲模态在某节点的形状分量（已无量纲归一化，最大绝对分量为 1）。"""
+
+    node_id: str
+    ux: float = Field(..., description="屈曲模态的水平分量")
+    uy: float = Field(..., description="屈曲模态的竖向分量")
+    theta: float = Field(..., description="屈曲模态的转角分量（弧度制下的相对形状）")
+
+
+class BucklingResponse(BaseModel):
+    success: Literal[True] = True
+    has_valid_buckling_mode: Literal[True] = Field(
+        True,
+        description="是否找到有物理意义的最低正临界因子（恒为 true；"
+        "不存在时走结构化错误 NO_POSITIVE_CRITICAL_FACTOR）",
+    )
+    critical_load_factor: float = Field(
+        ...,
+        description="弹性临界荷载因子：当前荷载整体放大该倍数后发生整体屈曲（分岔失稳）",
+    )
+    buckling_mode: list[BucklingModeDisplacement] = Field(
+        ..., description="对应临界因子的屈曲模态位移形状（全自由度最大绝对值归一化为 1）"
+    )
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

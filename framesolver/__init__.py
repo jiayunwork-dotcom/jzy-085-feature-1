@@ -10,10 +10,10 @@
 - forces.py    杆端内力与支座反力回代
 - validation.py  输入校验（编号、拓扑、几何、材料、连通性、刚体约束）
 - models.py    HTTP 输入 / 输出的 Pydantic 数据模型
-- analysis.py  把上述各段串成一次完整核算
-- main.py      唯一的 HTTP 入口（FastAPI）
+- analysis.py  把上述各段串成完整核算（线性静力 / 弹性屈曲）
+- main.py      HTTP 入口（FastAPI）：/solve 与 /buckling
 """
 
-from .analysis import analyze_frame
+from .analysis import analyze_buckling, analyze_frame
 
-__all__ = ["analyze_frame"]
+__all__ = ["analyze_frame", "analyze_buckling"]

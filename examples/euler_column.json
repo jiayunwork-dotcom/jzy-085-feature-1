@@ -1,0 +1,19 @@
+{
+  "nodes": [
+    {"id": "0", "x": 0.0, "y": 0.0, "restraints": [true, true, false]},
+    {"id": "1", "x": 0.0, "y": 1.0, "restraints": [false, false, false]},
+    {"id": "2", "x": 0.0, "y": 2.0, "restraints": [false, false, false]},
+    {"id": "3", "x": 0.0, "y": 3.0, "restraints": [false, false, false]},
+    {"id": "4", "x": 0.0, "y": 4.0, "restraints": [true, false, false]}
+  ],
+  "members": [
+    {"id": "e0", "node_i": "0", "node_j": "1", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "e1", "node_i": "1", "node_j": "2", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "e2", "node_i": "2", "node_j": "3", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5},
+    {"id": "e3", "node_i": "3", "node_j": "4", "elastic_modulus": 2.1e8, "area": 2.0e-2, "inertia": 8.0e-5}
+  ],
+  "nodal_loads": [
+    {"node_id": "4", "fx": 0.0, "fy": -10.0, "moment": 0.0}
+  ],
+  "distributed_loads": []
+}
